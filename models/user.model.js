@@ -43,4 +43,20 @@ var userSchema = new Schema({
 
 userSchema.set('collection', 'users');
 
+userSchema.set('toJSON', { virtuals: true });
+
+userSchema.virtual('full_name').get(function () {
+    return this.first_name + ' ' + this.last_name;
+});
+
+userSchema.virtual('full_name').set(function (name) {
+    if (name.indexOf(' ') >= 0) {
+        var split = name.split(' ');
+        this.first_name = split[0];
+        this.last_name = split[1];
+    } else {
+        this.first_name = name;
+    }
+});
+
 module.exports = mongoose.model('User', userSchema);
