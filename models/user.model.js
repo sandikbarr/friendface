@@ -59,4 +59,15 @@ userSchema.virtual('full_name').set(function (name) {
     }
 });
 
+userSchema.statics.findByName = function(firstName, lastName, cb) {
+    var query = {};
+    if (firstName) {
+        query.first_name = firstName;
+    }
+    if (lastName) {
+        query.last_name = lastName;
+    }
+    return this.find(query, cb);
+};
+
 module.exports = mongoose.model('User', userSchema);

@@ -3,6 +3,10 @@
 var User = require('../models/user.model.js');
 
 module.exports = function(app) {
+    app.get('/rest/users', getUsers, function(req, res, next) {
+        return res.json(req.users);
+    });
+
     app.get('/rest/users/:id', getUser, function(req, res, next) {
         if (req.user) {
             return res.json(req.user);
@@ -61,6 +65,17 @@ module.exports = function(app) {
 
     app.delete('/rest/users/:id/herds/:herdId/:userIdToBeRemoved', removeFromHerd);
 };
+
+function getUsers(req, res, next) {
+    User.findByName(req.query.first_name, req.query.last_name, function(err, userResult) {
+        if (err) {
+            console.error(err);
+            res.status(500).send('an error occurred');
+        }
+        req.users = userResult;
+        next();
+    });
+}
 
 function getUser(req, res, next) {
     User.findById(req.params.id, function(err, userResult) {
