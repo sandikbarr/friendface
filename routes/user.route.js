@@ -52,7 +52,7 @@ module.exports = function(app) {
                 }
             });
         }
-        return res.status(404).json(generateNotFoundResponse('user', 'id', req.params.id));
+        return res.status(404).json(generateNotFoundResponse('user/herd', 'id', req.params.id + '/' + req.params.herdId));
     });
 
     app.delete('/rest/users/:id/herds/:herdId', deleteHerd);
