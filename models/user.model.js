@@ -46,7 +46,11 @@ userSchema.set('collection', 'users');
 userSchema.set('toJSON', { virtuals: true });
 
 userSchema.virtual('full_name').get(function () {
-    return this.first_name + ' ' + this.last_name;
+    var full_name = this.first_name;
+    if (this.last_name) {
+        full_name += ' ' + this.last_name;
+    }
+    return full_name;
 });
 
 userSchema.virtual('full_name').set(function (name) {
