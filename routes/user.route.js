@@ -1,5 +1,6 @@
 'use strict';
 
+var createError = require('http-errors');
 var User = require('../models/user.model.js');
 
 module.exports = function(app) {
@@ -7,47 +8,37 @@ module.exports = function(app) {
         return res.json(req.users);
     });
 
-    app.get('/rest/users/:id', getUser, function(req, res, next) {
+    app.get('/rest/users/:userId', getUser, function(req, res, next) {
         if (req.user) {
             return res.json(req.user);
         } else {
-            return res.status(404).json(generateNotFoundResponse('user', 'id', req.params.id));
+            return next(createError(404, 'userId ' + req.params.userId + ' not found'));
         }
     });
 
-    app.post('/rest/users', createUser, function(req, res, next) {
-        if (req.user) {
-            return res.status(201).send();
-        } else {
-            res.status(500).send('an error occurred');
-        }
-    });
+    app.post('/rest/users', createUser);
 
-    app.get('/rest/users/:id/followers', getUser, function(req, res, next) {
+    app.delete('/rest/users/:userId', deleteUser);
+
+    app.get('/rest/users/:userId/followers', getUser, function(req, res, next) {
         if (req.user && req.user.followers) {
             return res.json(req.user.followers);
         } else {
-            return res.status(404).json(generateNotFoundResponse('user', 'id', req.params.id));
+            return next(createError(404, 'userId ' + req.params.userId + ' not found'));
         }
     });
 
-    app.get('/rest/users/:id/herds', getUser, function(req, res, next) {
+    app.get('/rest/users/:userId/herds', getUser, function(req, res, next) {
         if (req.user && req.user.herds) {
             return res.json(req.user.herds);
         } else {
-            return res.status(404).json(generateNotFoundResponse('user', 'id', req.params.id));
+            return next(createError(404, 'userId ' + req.params.userId + ' not found'));
         }
     });
 
-    app.post('/rest/users/:id/herds', createHerd, function(req, res, next) {
-        if (req.user && req.user.herds) {
-            return res.status(201).send();
-        } else {
-            return res.status(404).json(generateNotFoundResponse('user', 'id', req.params.id));
-        }
-    });
+    app.post('/rest/users/:id/herds', createHerd);
 
-    app.get('/rest/users/:id/herds/:herdId', getUser, function(req, res, next) {
+    app.get('/rest/users/:userId/herds/:herdId', getUser, function(req, res, next) {
         if (req.user && req.user.herds) {
             // TODO: $elemMatch query to return single element
             req.user.herds.forEach(function(herd) {
@@ -56,7 +47,7 @@ module.exports = function(app) {
                 }
             });
         }
-        return res.status(404).json(generateNotFoundResponse('user/herd', 'id', req.params.id + '/' + req.params.herdId));
+        return next(createError(404, 'userId/herdId ' + req.params.userId + '/' + req.params.herdId + ' not found'));
     });
 
     app.delete('/rest/users/:id/herds/:herdId', deleteHerd);
@@ -69,8 +60,7 @@ module.exports = function(app) {
 function getUsers(req, res, next) {
     User.findByName(req.query.first_name, req.query.last_name, function(err, userResult) {
         if (err) {
-            console.error(err);
-            res.status(500).send('an error occurred');
+            return next(createError(err));
         }
         req.users = userResult;
         next();
@@ -78,10 +68,9 @@ function getUsers(req, res, next) {
 }
 
 function getUser(req, res, next) {
-    User.findById(req.params.id, function(err, userResult) {
+    User.findById(req.params.userId, function(err, userResult) {
         if (err) {
-            console.error(err);
-            res.status(500).send('an error occurred');
+            return next(createError(err));
         }
         req.user = userResult;
         next();
@@ -90,8 +79,7 @@ function getUser(req, res, next) {
 
 function createUser(req, res, next) {
     if (!req.body.first_name) {
-        res.status(400).send('first_name required');
-        return;
+        return next(createError(400, 'first_name required'));
     } else {
         var firstName = req.body.first_name;
         var lastName = req.body.last_name;
@@ -104,19 +92,30 @@ function createUser(req, res, next) {
     });
     user.save(function(err, user) {
         if (err) {
-            console.error(err);
-            res.status(500).send('an error occurred');
+            return next(createError(err));
         }
         res.location('/rest/users/'+ user._id);
         req.user = user;
-        next();
+        return res.status(201).send();
     });
+}
+
+function deleteUser(req, res, next) {
+    var userId = req.params.userId;
+
+    User.remove(
+        {_id: userId},
+        function(err) {
+            if (err) {
+                return next(createError(err));
+            }
+            res.status(200).send();
+        });
 }
 
 function createHerd(req, res, next) {
     if (!req.body.herd_name) {
-        res.status(400).send('herd_name required');
-        return;
+        return next(createError(400,'herd_name required',{expose:false}));
     } else {
         var herdName = req.body.herd_name;
     }
@@ -126,12 +125,11 @@ function createHerd(req, res, next) {
         {$push: {herds: {name: herdName}}},
         function(err, user) {
             if (err) {
-                console.error(err);
-                res.status(500).send('an error occurred');
+                return next(createError(err));
             }
             res.location('/rest/users/'+ user._id + '/herds');// TODO: This should be the location of the single herd resource, but we don't have the _id. Need to use save to get _id in result.
             req.user = user;
-            next();
+            return res.status(201).send();
         });
 }
 
@@ -144,13 +142,12 @@ function deleteHerd(req, res, next) {
         {$pull: {herds: {_id: herdId}}},
         function(err, result) {
             if (err) {
-                console.error(err);
-                return res.status(500).send('an error occurred');
+                return next(createError(err));
             }
             if (result.nModified === 1) {
                 res.status(200).send();
             } else {
-                return res.status(404).json(generateNotFoundResponse('user/herd', 'id', userId + '/' + herd));
+                next(createError(404, 'userId/herdId ' + userId + '/' + herdId + ' not found'));
             }
         });
 }
@@ -167,10 +164,11 @@ function addToHerd(req, res, next) {
 
     User.findById(userIdToBeFollowed, function(err, userToBeFollowed) {
         if (err) {
-            console.error(err);
-            return res.status(500).send('an error occurred');
+            return next(createError(err));
         }
-        if (userToBeFollowed) {
+        if (!userToBeFollowed) {
+            return next(createError(404, 'userId ' + userIdToBeFollowed + ' not found'));
+        } else {
             User.findOneAndUpdate(
                 {_id: userIdFollowing, 'herds._id': herdId},
                 {
@@ -184,16 +182,19 @@ function addToHerd(req, res, next) {
                 },
                 function(err, userFollowing) {
                     if (err) {
-                        console.error(err);
-                        return res.status(500).send('an error occurred');
+                        return next(createError(err));
                     }
-                    if (userFollowing) {
+                    if (!userFollowing) {
+                        return next(createError(404, 'userId/herdId ' + userIdFollowing + '/' + herdId + ' not found'));
+                    } else {
                         userFollowing.herds.forEach(function(herd) {
                             if (herd._id.toString() === herdId) {
                                 herdName = herd.name;
                             }
                         });
-                        if (herdName) {
+                        if (!herdName) {
+                            return next(createError(404, 'herdId ' + herdId + ' not found'));
+                        } else {
                             var alreadyFollowing = false;
                             userToBeFollowed.followers.forEach(function(follower) {
                                 if (userFollowing._id.toString() === follower._id.toString()) {
@@ -225,22 +226,15 @@ function addToHerd(req, res, next) {
                             }
                             userToBeFollowed.save(function(err, userFollowed) {
                                 if (err) {
-                                    console.error(err);
-                                    return res.status(500).send('an error occurred');
+                                    return next(createError(err));
                                 }
-                                res.location('/rest/users/' + userFollowed._id + '/followers');// TODO: returning user added followers loc, probably not the right resp
+                                res.location('/rest/users/' + userFollowing._id + '/herds/' + herdId);
                                 return res.status(200).send();
                             });
-                        } else {
-                            return res.status(404).json(generateNotFoundResponse('herd', 'id', herdId));
                         }
-                    } else {
-                        return res.status(404).json(generateNotFoundResponse('user/herd', 'id', userIdFollowing + '/' + herdId));
                     }
                 }
             );
-        } else {
-            return res.status(404).json(generateNotFoundResponse('user', 'id', userIdToBeFollowed));
         }
     });
 }
@@ -255,17 +249,17 @@ function removeFromHerd(req, res, next) {
         {$pull: {'herds.$.members': {_id: userIdToBeRemoved}}},
         function(err, result) {
             if (err) {
-                console.error(err);
-                return res.status(500).send('an error occurred');
+                return next(createError(err));
             }
             User.findOne(
                 {_id: userIdToBeRemoved},
                 function(err, userToBeRemoved) {
                     if (err) {
-                        console.error(err);
-                        return res.status(500).send('an error occurred');
+                        return next(createError(err));
                     }
-                    if (userToBeRemoved) {
+                    if (!userToBeRemoved) {
+                        return next(createError(404, 'userId ' + userIdToBeRemoved + ' not found'));
+                    } else {
                         userToBeRemoved.followers.forEach(function(follower, followerIndex) {
                             if (follower._id.toString() === userIdFollowing) {
                                 follower.herds.forEach(function(herd, herdIndex) {
@@ -280,26 +274,12 @@ function removeFromHerd(req, res, next) {
                         });
                         userToBeRemoved.save(function(err, result) {
                             if (err) {
-                                console.error(err);
-                                return res.status(500).send('an error occurred');
+                                return next(createError(err));
                             }
                             return res.status(200).send();
                         });
-                    } else {
-                        return res.status(404).json(generateNotFoundResponse('user', 'id', userIdToBeRemoved));
                     }
                 }
             );
         });
-}
-
-function generateNotFoundResponse(resource, param, value) {
-    return {
-        message: 'Could not find ' + resource + ' with ' + param + ' ' + value,
-        errorData: {
-            propertyName: param,
-            invalidId: value
-        },
-        type: 'INVALID_ID'
-    };
 }
