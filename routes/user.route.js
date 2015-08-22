@@ -102,13 +102,29 @@ function createUser(req, res, next) {
 function deleteUser(req, res, next) {
     var userId = req.params.userId;
 
-    User.remove(
-        {_id: userId},
-        function(err) {
+    User.findById(userId,
+        function(err, userToBeRemoved) {
             if (err) {
                 return next(createError(err));
             }
-            res.status(200).send();
+            if (!userToBeRemoved) {
+                return next(createError(404, 'userId ' + userId + ' not found'));
+            } else {
+                userToBeRemoved.remove(function(err) {
+                    if (err) {
+                        return next(createError(err));
+                    }
+                    User.update({'herds.members._id':userId},
+                        {$pull:{'herds.$.members':{_id:userId}}},
+                        {multi:true},
+                        function(err, updateHerdsResult) {
+                            if (err) {
+                                return next(createError(err));
+                            }
+                            return res.status(200).send();
+                        });
+                });
+            }
         });
 }
 
