@@ -95,7 +95,6 @@ function createUser(req, res, next) {
             return next(createError(err));
         }
         res.location('/rest/users/'+ user._id);
-        req.user = user;
         return res.status(201).send();
     });
 }
