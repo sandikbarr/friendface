@@ -38,12 +38,18 @@ var userSchema = new Schema({
     ],
     herds: [
         herdSchema
-    ]
+    ],
+    updated_at: Types.Date
 });
 
 userSchema.set('collection', 'users');
 
 userSchema.set('toJSON', { virtuals: true });
+
+userSchema.pre('save', function(next) {
+    this.updated_at = new Date();
+    next();
+});
 
 userSchema.virtual('full_name').get(function () {
     var full_name = this.first_name;
