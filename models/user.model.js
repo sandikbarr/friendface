@@ -51,6 +51,10 @@ userSchema.pre('save', function(next) {
     next();
 });
 
+userSchema.virtual('created_at').get(function() {
+    return this._id.getTimestamp();
+});
+
 userSchema.virtual('full_name').get(function () {
     var full_name = this.first_name;
     if (this.last_name) {
