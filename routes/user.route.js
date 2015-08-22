@@ -250,8 +250,7 @@ function removeFromHerd(req, res, next) {
             if (err) {
                 return next(createError(err));
             }
-            User.findOne(
-                {_id: userIdToBeRemoved},
+            User.findById(userIdToBeRemoved,
                 function(err, userToBeRemoved) {
                     if (err) {
                         return next(createError(err));
