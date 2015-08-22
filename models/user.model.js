@@ -73,6 +73,9 @@ userSchema.virtual('full_name').set(function (name) {
     }
 });
 
+userSchema.index({first_name:1, last_name:1});
+userSchema.set('autoIndex',false);
+
 userSchema.statics.findByName = function(firstName, lastName, cb) {
     var query = {};
     if (firstName) {
