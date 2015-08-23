@@ -47,4 +47,17 @@ feedSchema.virtual('created_at').get(function() {
     return this._id.getTimestamp();
 });
 
+feedSchema.methods.getPriorMonthFeed = function(cb) {
+    var priorMonth = new Date(parseInt(this.month.substr(0,4)), parseInt(this.month.substr(4,2)) - 2, 1);
+    var month = '' + priorMonth.getFullYear();
+    if (priorMonth.getMonth() < 9) {
+        month += '0' + (priorMonth.getMonth() + 1);
+    } else {
+        month += '' + (priorMonth.getMonth() + 1);
+    }
+    var query = this.model('Feed').find({user_id: this.user_id});
+    query.where({month: month});
+    return query.exec(cb);
+};
+
 module.exports = mongoose.model('Feed', feedSchema);
