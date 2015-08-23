@@ -87,4 +87,10 @@ userSchema.statics.findByName = function(firstName, lastName, cb) {
     return this.find(query, cb);
 };
 
+userSchema.methods.removeFromHerds = function(cb) {
+    return this.model('User').update({'herds.members._id':this._id},
+        {$pull:{'herds.$.members':{_id:this._id}}},
+        {multi:true}, cb);
+};
+
 module.exports = mongoose.model('User', userSchema);
