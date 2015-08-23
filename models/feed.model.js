@@ -4,9 +4,9 @@ var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 var Types = Schema.Types;
 
-var wallSchema = new Schema({
+var feedSchema = new Schema({
     user_id: Types.ObjectId,
-    month: Types.String,// one wall document per month to keep a “page” of recent posts in the initial page view
+    month: Types.String,// one feed document per month to keep a “page” of recent posts in the initial page view
     posts: [
         {
             _id: Types.ObjectId,
@@ -39,12 +39,12 @@ var wallSchema = new Schema({
     ]
 });
 
-wallSchema.set('collection', 'posts');
+feedSchema.set('collection', 'posts');
 
-wallSchema.set('toJSON', { virtuals: true });
+feedSchema.set('toJSON', { virtuals: true });
 
-wallSchema.virtual('created_at').get(function() {
+feedSchema.virtual('created_at').get(function() {
     return this._id.getTimestamp();
 });
 
-module.exports = mongoose.model('Wall', postSchema);
+module.exports = mongoose.model('Feed', feedSchema);
